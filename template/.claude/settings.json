@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "UserPromptExpansion": [
+      {
+        "matcher": "speckit[-.]",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "root=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; exec \"$root/.speckit-hooks/speckit-hook\" --agent=claude",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "root=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; exec \"$root/.speckit-hooks/speckit-hook\" --agent=claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

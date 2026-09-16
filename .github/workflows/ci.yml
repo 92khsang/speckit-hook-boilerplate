@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9 is the floor the shim enforces and the README documents, so it is
+        # tested explicitly rather than assumed. There is no macOS arm64 build of
+        # 3.9 in actions/python-versions, and macos-latest is arm64 — what macOS
+        # is here to exercise is the BSD userland the shim and installer run on,
+        # not a second Python version, so one modern combination covers it.
+        include:
+          - {os: ubuntu-latest, python: '3.9'}
+          - {os: ubuntu-latest, python: '3.13'}
+          - {os: macos-latest, python: '3.13'}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit and integration tests
+        run: python3 -m unittest discover -s tests -t tests
+      - name: Installer end-to-end
+        run: |
+          target=$(mktemp -d)
+          git init -q "$target"
+          scripts/install.sh --target "$target"
+          "$target/.speckit-hooks/speckit-hook" --agent=claude </dev/null

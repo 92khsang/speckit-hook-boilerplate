@@ -1,0 +1,58 @@
+#!/bin/sh
+# Native-hook entry point for deterministic Spec Kit before-hooks.
+#
+# This is POSIX sh rather than Python for one reason: when python3 is unavailable
+# the hook still has to *block*, and on Codex blocking means printing a JSON
+# document -- which Python obviously cannot do if Python is what is missing. So the
+# refusal path lives here, where it works with nothing but the shell.
+#
+# stdin is passed through untouched. Nothing read from stdin or from any project
+# file is ever expanded, evaluated, or placed on a command line.
+
+set -eu
+
+AGENT=""
+for arg in "$@"; do
+    case "$arg" in
+        --agent=*) AGENT="${arg#--agent=}" ;;
+        claude|codex) [ -z "$AGENT" ] && AGENT="$arg" || : ;;
+    esac
+done
+
+# `dirname "$0"` plus `pwd -P` keeps this working on macOS, where `readlink -f`
+# does not exist.
+HOOK_DIR=$(cd -- "$(dirname -- "$0")" && pwd -P)
+
+block() {
+    if [ "$AGENT" = "codex" ]; then
+        # Codex has no exit-2 refusal on UserPromptSubmit; the decision travels in
+        # the document and the process must still exit 0.
+        printf '{"decision":"block","reason":"%s","systemMessage":"%s"}\n' "$1" "$1"
+        exit 0
+    fi
+    printf 'Spec Kit pre-hook blocked this request.\n%s\n' "$1" >&2
+    printf 'Do not proceed with the Spec Kit stage; surface this to the user.\n' >&2
+    exit 2
+}
+
+usable() {
+    [ -n "${1:-}" ] || return 1
+    command -v -- "$1" >/dev/null 2>&1 || return 1
+    "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1
+}
+
+PYTHON=""
+for candidate in "${SPECKIT_PREHOOK_PYTHON:-}" python3 python; do
+    if usable "$candidate"; then
+        PYTHON="$candidate"
+        break
+    fi
+done
+
+if [ -z "$PYTHON" ]; then
+    block "Python 3.9 or newer is required to evaluate Spec Kit pre-hooks and none was found on PATH. Refusing to continue rather than silently skipping a mandatory pre-hook. Install python3, or set SPECKIT_PREHOOK_PYTHON to an interpreter."
+fi
+
+# The launcher is given as a file path, not as `-m`, so the repository's working
+# directory never lands on sys.path.
+exec "$PYTHON" "$HOOK_DIR/run_hook.py" "$@"
