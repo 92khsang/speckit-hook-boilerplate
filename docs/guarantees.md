@@ -55,10 +55,12 @@ action. Captured payloads confirm the field shapes, including that
 arguments.
 
 A per-turn guard covers the remaining case — one turn reaching the runner twice —
-keyed on `(agent, session_id, prompt_id | turn_id, event)`. `prompt_id` is documented
-as correlating one user prompt with every subsequent event until the next prompt, so
-a legitimate re-run of the same stage later in the session arrives with a new key and
-injects again.
+keyed on `(agent, session_id, prompt_id | turn_id, event)`. `prompt_id` correlates one
+user prompt with every subsequent event until the next prompt, so a legitimate re-run
+of the same stage later in the session arrives with a new key and injects again. Live
+payload capture confirms `prompt_id` is present on **both** Claude routes, which the
+earlier attempt's `tool_use_id` key was not — that field exists only on `PreToolUse`
+and changes per tool call, so it could not suppress anything.
 
 **Mandatory hooks deliberately bypass that guard.** A long turn can compact an
 earlier injection out of context, and a missing mandatory gate costs more than a
@@ -136,9 +138,11 @@ payload's `cwd`.
 
 **Verification status: confirmed end-to-end on both CLIs.**
 
-Claude: a typed `/speckit-plan` and a model-initiated skill call each fired exactly one
-event, the injected context carried the installed skill's real body, and the model
-performed the pre-hook before the stage.
+Claude, via `scripts/verify-claude.sh`: a typed `/speckit-plan` produced exactly one
+`UserPromptExpansion` and no `PreToolUse`; a model-initiated skill call produced
+exactly one `PreToolUse` and no `UserPromptExpansion`. In both cases the injected
+context carried the installed skill's real body, and the model performed the pre-hook
+before the stage.
 
 Codex, running the shipped artifact in a real repository with both conditions
 satisfied:
