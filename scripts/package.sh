@@ -7,16 +7,18 @@ STAGE=$(mktemp -d "${TMPDIR:-/tmp}/speckit-pkg.XXXXXX")
 trap 'rm -rf "$STAGE"' EXIT
 
 # The archive mirrors the repository layout, so scripts/install.sh works unchanged
-# whether it is run from a checkout or from an unpacked archive.
+# whether it is run from a checkout or from an unpacked archive. Everything the
+# README points at is included, so no instruction in the archive dangles.
 PKG="$STAGE/speckit-hook-boilerplate"
-mkdir -p "$PKG/template" "$PKG/scripts" "$PKG/docs"
+mkdir -p "$PKG/template" "$PKG/scripts" "$PKG/docs" "$PKG/tests"
 cp -R "$SOURCE_DIR/template/." "$PKG/template/"
-cp "$SOURCE_DIR/scripts/install.sh" "$SOURCE_DIR/scripts/probe-codex.sh" "$PKG/scripts/"
+cp -R "$SOURCE_DIR/tests/." "$PKG/tests/"
+cp "$SOURCE_DIR/scripts/install.sh" "$SOURCE_DIR/scripts/verify-claude.sh" \
+   "$SOURCE_DIR/scripts/probe-codex.sh" "$PKG/scripts/"
 cp "$SOURCE_DIR/README.md" "$PKG/"
 cp "$SOURCE_DIR/docs/guarantees.md" "$SOURCE_DIR/docs/migration.md" "$PKG/docs/"
 find "$STAGE" -name '__pycache__' -type d -prune -exec rm -rf {} +
-chmod +x "$PKG/template/.speckit-hooks/speckit-hook" "$PKG/scripts/install.sh" \
-         "$PKG/scripts/probe-codex.sh"
+chmod +x "$PKG/template/.speckit-hooks/speckit-hook" "$PKG"/scripts/*.sh
 
 mkdir -p "$SOURCE_DIR/dist"
 rm -f "$OUT"
