@@ -1,0 +1,40 @@
+name: release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+# The repository default is read-only, so this is required for `gh release create`.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tests
+        run: python3 -m unittest discover -s tests -t tests
+
+      - name: Build the archive
+        run: scripts/package.sh
+
+      # The archive is what users actually receive, and it has shipped broken
+      # before: the README pointed at `tests/` and `scripts/verify-claude.sh`
+      # while the zip contained neither. Running the suite from inside the
+      # unpacked archive catches that class of defect before it is published.
+      - name: Verify the archive stands alone
+        run: |
+          unzip -q dist/speckit-hook-boilerplate.zip -d "$RUNNER_TEMP/check"
+          cd "$RUNNER_TEMP/check/speckit-hook-boilerplate"
+          python3 -m unittest discover -s tests -t tests
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/speckit-hook-boilerplate.zip \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

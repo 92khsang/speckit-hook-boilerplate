@@ -32,6 +32,11 @@ It never executes hook content and never starts a nested `claude` or `codex` pro
 
 ## Install
 
+Clone this repository, or download `speckit-hook-boilerplate.zip` from the
+[latest release](https://github.com/92khsang/speckit-hook-boilerplate/releases/latest)
+and unpack it. The archive mirrors this layout, so the commands below are the same
+either way.
+
 ```sh
 scripts/install.sh --target /path/to/your/repo          # both CLIs
 scripts/install.sh --target /path/to/your/repo --agent claude
