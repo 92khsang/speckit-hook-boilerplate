@@ -1,0 +1,39 @@
+
+# <type>(<scope>)!: <description>
+#
+# [optional body]
+#
+# [optional footer(s)]
+#
+# --------------------------------------------------------------------
+# Conventional Commits 1.0.0: https://www.conventionalcommits.org/
+#
+# Header
+#   type         Required. One of:
+#                  feat      a new feature
+#                  fix       a bug fix
+#                  build     build system or external dependencies
+#                  chore     maintenance that does not change behavior
+#                  ci        CI configuration and scripts
+#                  docs      documentation only
+#                  perf      performance improvement
+#                  refactor  restructuring without behavior change
+#                  revert    revert of a previous commit
+#                  style     formatting only, no change in meaning
+#                  test      adding or correcting tests
+#   (scope)      Optional. A noun for the affected area, e.g. (checker).
+#   !            Optional. Marks a breaking change.
+#   description  Required. Imperative mood, no trailing period.
+#                72 characters or fewer for the whole header is recommended.
+#
+# Body
+#   One blank line after the header. Explain what changed and why.
+#   Wrap lines at 72 characters.
+#
+# Footers
+#   One blank line after the body. Format: `Token: value`, using hyphens
+#   in multi-word tokens (e.g. `Refs: #123`, `Reviewed-by: Name`).
+#   Breaking changes: `BREAKING CHANGE: <description>`.
+#
+# Lines starting with '#' are removed. Leaving the message unedited
+# aborts the commit.
