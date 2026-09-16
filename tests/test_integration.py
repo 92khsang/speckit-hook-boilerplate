@@ -273,6 +273,18 @@ class Injection(unittest.TestCase):
         self.assertNotIn("\r", text)
         self.assertNotIn("﻿", text)
 
+    def test_a_second_stage_in_the_prompt_is_flagged(self):
+        # Codex expands every `$skill` token in a prompt, but only the first stage is
+        # resolved here, so the partial coverage has to be visible.
+        root = make_repo(self, extensions_yml=registry([MANDATORY]),
+                         manifests=PROBE_MANIFEST,
+                         skills={"speckit-probe-check": check_skill()}, agent="codex")
+        data = payload("codex", root, prompt="$speckit-plan then $speckit-implement")
+        code, out, err = run_hook(self, root, "codex", data)
+        self.assertEqual(code, 0, err)
+        text = support.injected(out)
+        self.assertIn("this prompt also names `implement`", text)
+
     def test_heading_only_body_injects_with_a_warning(self):
         # A heading is still an instruction; dropping it would silently lose a gate.
         root = self.build(skills={"speckit-probe-check": check_skill(
@@ -299,7 +311,11 @@ class Blocking(unittest.TestCase):
             document = json.loads(out)
             self.assertEqual(document["decision"], "block")
             self.assertTrue(document["reason"])
-            self.assertEqual(sorted(document), ["decision", "reason"])
+            # `reason` alone is invisible in non-interactive `codex exec`;
+            # `systemMessage` is what actually reaches the user.
+            self.assertEqual(sorted(document),
+                             ["decision", "reason", "systemMessage"])
+            self.assertEqual(document["systemMessage"], document["reason"])
             message = document["reason"]
         self.assertIn(expect, message)
         return message
@@ -470,6 +486,7 @@ class RuntimeAbsence(unittest.TestCase):
         document = json.loads(result.stdout)
         self.assertEqual(document["decision"], "block")
         self.assertIn("Python 3.9 or newer is required", document["reason"])
+        self.assertIn("Python 3.9 or newer is required", document["systemMessage"])
 
     def test_never_exits_with_command_not_found(self):
         for agent in ("claude", "codex"):

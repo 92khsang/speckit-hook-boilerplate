@@ -71,7 +71,7 @@ Exit status `0` with no output means installed and idle.
 |---|---|---|
 | Claude Code | `UserPromptExpansion` | `command_name`, for a typed `/speckit-plan` |
 | Claude Code | `PreToolUse` (`tool_name: Skill`) | `tool_input.skill`, for a model-initiated skill call |
-| Codex CLI | `UserPromptSubmit` | a leading `$speckit-plan` in `prompt` |
+| Codex CLI | `UserPromptSubmit` | any `$speckit-plan` token in `prompt` |
 
 A typed slash command fires `UserPromptExpansion` only — slash commands never reach
 `UserPromptSubmit` — and a model-initiated skill call fires `PreToolUse` only, so the
@@ -79,12 +79,20 @@ two Claude routes cannot both inject for one action. A per-turn guard keyed on
 `prompt_id` / `turn_id` covers the remaining case where one turn reaches the runner
 twice.
 
-Matching is anchored: `speckit-tasks` and `speckit-taskstoissues` are distinct, and
-`speckit-implementation`, `speckit-implement-extra` and `speckit-compound-check` match
-nothing. On Codex, only a line-leading `$speckit-<stage>` counts, so
-`Explain $speckit-implement` and a backticked mention are ignored. A false positive
-would inject a mandatory gate into an unrelated conversation; a false negative only
-falls back to Spec Kit's own template-driven discovery.
+Matching is anchored on both sides: `speckit-tasks` and `speckit-taskstoissues` are
+distinct, and `speckit-implementation`, `speckit-implement-extra`,
+`speckit-compound-check` and `x$speckit-plan` match nothing.
+
+The Codex rule deliberately mirrors what Codex itself does, which was measured rather
+than assumed: it expands a `$skill` token **wherever it appears**, mid-sentence and
+inside backticks alike. `Explain what $speckit-plan does. Do not run it.` really does
+load and run the plan skill, so the gate has to fire there too. Matching only at line
+start, or ignoring code spans, would let a real stage invocation proceed with its
+mandatory gate skipped.
+
+Codex expands every `$skill` token in a prompt, but only the first stage is resolved.
+When a prompt names more than one, the injected document says so rather than leaving
+the partial coverage silent.
 
 The `matcher` values in the shipped configurations are deliberately permissive. All
 accuracy lives in one unit-tested function rather than being split across two config
@@ -151,6 +159,16 @@ lose a gate silently:
 
 A block never also emits `additionalContext`. Mandatory bodies are never truncated: a
 half-injected gate that the model believes it satisfied is worse than a refusal.
+
+One measured gap: under `codex exec`, a block is enforced — the turn completes with
+zero tokens, so the prompt never reaches the model — but Codex 0.154.0 displays only
+`hook: UserPromptSubmit Blocked` and shows neither `reason`, `systemMessage`, nor the
+hook's stderr. Replay the payload by hand to see the explanation:
+
+```sh
+printf '{"hook_event_name":"UserPromptSubmit","prompt":"$speckit-plan","cwd":"%s"}' "$PWD" \
+  | .speckit-hooks/speckit-hook --agent=codex
+```
 
 ## What is and is not guaranteed
 

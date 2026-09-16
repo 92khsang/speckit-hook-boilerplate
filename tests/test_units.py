@@ -126,13 +126,18 @@ class StageDetection(unittest.TestCase):
         self.assertNotIn("args", data["tool_input"])
         self.assertEqual(route.extract_stage("claude", data), "plan")
 
-    def test_codex_accepts_only_a_leading_invocation(self):
+    def test_codex_matching_mirrors_codex_expansion(self):
+        # Measured on codex-cli 0.154.0: Codex expands a `$skill` token wherever it
+        # appears, mid-sentence and inside backticks alike. Matching only at line
+        # start would let a real invocation run with its mandatory gate skipped.
         accepted = ["$speckit-plan", "  $speckit-plan", "$speckit-plan the auth work",
-                    "first line\n$speckit-implement", "$speckit.plan"]
-        rejected = ["Explain $speckit-implement", "`$speckit-implement`",
-                    "$speckit-implementation", "$speckit-implement-extra",
-                    "speckit-implement", "$SPECKIT-PLAN", "",
-                    "```\n$speckit-implement\n```", "see $speckit-plan above"]
+                    "first line\n$speckit-implement", "$speckit.plan",
+                    "Explain what $speckit-implement does", "`$speckit-implement`",
+                    "```\n$speckit-implement\n```", "see $speckit-plan above",
+                    "(run $speckit-plan)"]
+        rejected = ["$speckit-implementation", "$speckit-implement-extra",
+                    "speckit-implement", "$SPECKIT-PLAN", "", "x$speckit-plan",
+                    "$speckit-compound-check", "$speckit-", "plan"]
         for prompt in accepted:
             with self.subTest(accept=prompt):
                 data = support.payload("codex", "/tmp", prompt=prompt)
@@ -141,6 +146,19 @@ class StageDetection(unittest.TestCase):
             with self.subTest(reject=prompt):
                 data = support.payload("codex", "/tmp", prompt=prompt)
                 self.assertIsNone(route.extract_stage("codex", data))
+
+    def test_several_stages_in_one_prompt_are_all_reported(self):
+        data = support.payload("codex", "/tmp",
+                               prompt="run $speckit-plan then $speckit-implement")
+        self.assertEqual(route.extract_stages("codex", data), ["plan", "implement"])
+        current = route.build_route("codex", data)
+        self.assertEqual(current.stage, "plan")
+        self.assertEqual(current.other_stages, ("implement",))
+
+    def test_a_repeated_stage_is_listed_once(self):
+        data = support.payload("codex", "/tmp",
+                               prompt="$speckit-plan and again $speckit-plan")
+        self.assertEqual(route.extract_stages("codex", data), ["plan"])
 
     def test_agent_is_taken_from_the_flag_not_the_payload(self):
         # `UserPromptSubmit` exists in both CLIs, so sniffing would be ambiguous.

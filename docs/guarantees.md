@@ -91,6 +91,65 @@ This is also why the entry point is POSIX `sh` rather than Python. When `python3
 missing, the hook still has to refuse — and on Codex refusing means *printing JSON*,
 which Python cannot do if Python is what is missing.
 
+### Codex expands `$skill` tokens anywhere, so matching does too
+
+Measured on codex-cli 0.154.0, comparing input-token counts and whether the skill's
+body was executed:
+
+| Prompt | Codex expanded the skill | Gate injected |
+|---|---|---|
+| `$speckit-plan` | yes | yes |
+| `Explain what $speckit-plan does. Do not run it.` | **yes** | yes |
+| ``What does `$speckit-plan` do?`` | **yes** | yes |
+| `Explain what $speckit-implementation would do.` | no | no |
+| `Explain the planning stage.` | no | no |
+
+Expansion is purely lexical on the `$name` token: position in the sentence does not
+matter, markdown code spans do not protect it, and "do not run it" does not prevent
+it. An earlier version of this runner matched only at line start and stripped code
+spans, on the theory that a mid-sentence mention was someone talking *about* the
+command. The measurement shows otherwise, and the consequence of being wrong in that
+direction is a real stage invocation running with its mandatory gate skipped — the
+exact failure this project exists to prevent. Detection now mirrors the host.
+
+Boundaries on both sides keep `$speckit-implementation`, `$speckit-implement-extra`
+and `x$speckit-plan` from matching.
+
+**Known limitation.** Codex expands *every* `$skill` token in a prompt, but only the
+first stage is resolved, because the injected document is scoped to one registry
+event. When a prompt names several, the document carries a warning naming the others
+and telling the model to say their pre-hooks were not checked. Claude has no
+equivalent case: one command expansion or one skill call per event.
+
+### Codex refuses hard, but does not show why
+
+Measured on codex-cli 0.154.0 under `codex exec`: a `decision: block` document does
+refuse the prompt outright — the turn completes with **zero tokens**, so the prompt
+never reaches the model. The gate is enforced.
+
+The *reason*, however, is not displayed. The user sees only:
+
+```
+hook: UserPromptSubmit
+hook: UserPromptSubmit Blocked
+```
+
+Tested and confirmed not to surface: the schema's `reason` field, its `systemMessage`
+field, and anything the hook writes to stderr. The runner sends `reason` and
+`systemMessage` regardless, since both are schema-valid and may be shown by the
+interactive TUI, which cannot be exercised non-interactively.
+
+Because the runner is deterministic, the explanation can always be recovered by
+replaying the same payload by hand:
+
+```sh
+printf '{"hook_event_name":"UserPromptSubmit","prompt":"$speckit-plan","cwd":"%s"}' "$PWD" \
+  | .speckit-hooks/speckit-hook --agent=codex
+```
+
+That prints the same block document, `reason` included. Claude has no equivalent gap:
+its exit-2 stderr is shown.
+
 ### Codex project hooks: two conditions, both required
 
 Codex will only load a project-local `.codex/hooks.json` when **both** of the

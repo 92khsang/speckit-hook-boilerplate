@@ -27,7 +27,7 @@ block() {
     if [ "$AGENT" = "codex" ]; then
         # Codex has no exit-2 refusal on UserPromptSubmit; the decision travels in
         # the document and the process must still exit 0.
-        printf '{"decision":"block","reason":"%s"}\n' "$1"
+        printf '{"decision":"block","reason":"%s","systemMessage":"%s"}\n' "$1" "$1"
         exit 0
     fi
     printf 'Spec Kit pre-hook blocked this request.\n%s\n' "$1" >&2

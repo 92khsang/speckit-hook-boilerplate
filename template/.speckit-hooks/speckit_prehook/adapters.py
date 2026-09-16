@@ -67,8 +67,11 @@ class CodexAdapter(Adapter):
         out = sys.stdout if out is None else out
         message = ("Spec Kit pre-hook blocked this request. %s "
                    "Do not proceed with the Spec Kit stage." % (reason,))
-        out.write(json.dumps({"decision": "block", "reason": message},
-                             ensure_ascii=False))
+        # `reason` alone is not shown to the user in non-interactive `codex exec`,
+        # which reports only "hook: UserPromptSubmit Blocked". `systemMessage` is the
+        # channel that surfaces the explanation, so both carry it.
+        out.write(json.dumps({"decision": "block", "reason": message,
+                              "systemMessage": message}, ensure_ascii=False))
         out.write("\n")
         out.flush()
         return 0

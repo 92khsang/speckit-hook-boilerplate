@@ -79,6 +79,15 @@ def _preamble(ctx, counts, order_note):
         "Order: YAML declaration order%s" % (order_note,),
         "Resolved: %d mandatory, %d optional, %d skipped, %d disabled, %d unresolved"
         % counts,
+    ]
+    if ctx.route.other_stages:
+        lines.append(
+            "WARNING: this prompt also names %s. Only `%s` was resolved here. Before "
+            "starting any of the others, tell the user their pre-hooks were not "
+            "checked by this runner."
+            % (", ".join("`%s`" % name for name in ctx.route.other_stages),
+               ctx.route.stage))
+    lines += [
         "",
         "AUTHORITY — read this before anything else.",
         "",
