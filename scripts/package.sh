@@ -15,7 +15,7 @@ cp -R "$SOURCE_DIR/template/." "$PKG/template/"
 cp -R "$SOURCE_DIR/tests/." "$PKG/tests/"
 cp "$SOURCE_DIR/scripts/install.sh" "$SOURCE_DIR/scripts/verify-claude.sh" \
    "$SOURCE_DIR/scripts/probe-codex.sh" "$PKG/scripts/"
-cp "$SOURCE_DIR/README.md" "$PKG/"
+cp "$SOURCE_DIR/README.md" "$SOURCE_DIR/LICENSE" "$PKG/"
 cp "$SOURCE_DIR/docs/guarantees.md" "$SOURCE_DIR/docs/migration.md" "$PKG/docs/"
 find "$STAGE" -name '__pycache__' -type d -prune -exec rm -rf {} +
 chmod +x "$PKG/template/.speckit-hooks/speckit-hook" "$PKG"/scripts/*.sh

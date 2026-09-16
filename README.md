@@ -204,3 +204,7 @@ check; `scripts/probe-codex.sh` diagnoses Codex hook delivery.
 ## Migrating from an earlier `.agent/hooks/` version
 
 See [docs/migration.md](docs/migration.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
