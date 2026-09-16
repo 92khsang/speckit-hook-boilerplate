@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "root=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; exec \"$root/.speckit-hooks/speckit-hook\" --agent=codex",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}
